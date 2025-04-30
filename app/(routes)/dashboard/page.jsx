@@ -247,7 +247,7 @@ function Dashboard() {
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
-      <h2 className="font-bold text-2xl mb-4">Live Location Tracker</h2>
+      <h2 className="font-bold text-2xl mb-4"> Location Tracker</h2>
       
       <div className="bg-white rounded-lg shadow-md overflow-hidden mb-4 relative">
         {/* Map container */}
