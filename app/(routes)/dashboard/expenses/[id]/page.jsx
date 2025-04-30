@@ -7,7 +7,7 @@ import { useUser } from "@clerk/nextjs";
 
 import { Pen, PenBox, Trash } from "lucide-react";
 import BudgetItem from "../../budgets/_components/BudgetItem";
-import AddExpense from "../_components/AddExpense";
+import AddLocationfrom "../_components/AddExpense";
 import ExpenseListTable from "../_components/ExpenseListTable";
 import EditBudget from "../_components/EditBudget";
 import { Button } from "../../../../../components/ui/button";

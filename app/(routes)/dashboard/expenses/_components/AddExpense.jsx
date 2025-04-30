@@ -33,17 +33,17 @@ function AddExpense({ budgetId, user, refreshData, totalIncome, totalExpenses })
     // Convert amount to number for calculation
     const expenseAmount = Number(amount);
     
-    // Check if this expense would exceed income
+    // Check if this Locationwould exceed income
     if (totalExpenses + expenseAmount > totalIncome) {
       setIsAlertOpen(true);
       return;
     }
     
-    // If expense doesn't exceed income, add it directly
+    // If Locationdoesn't exceed income, add it directly
     await addNewExpense();
   };
 
-  const addNewExpense = async () => {
+  const addNewLocation= async () => {
     const result = await db
       .insert(expenses)
       .values({
@@ -57,7 +57,7 @@ function AddExpense({ budgetId, user, refreshData, totalIncome, totalExpenses })
     console.log(result);
     if (result) {
       refreshData();
-      toast("New Expense Added");
+      toast("New LocationAdded");
       setName(""); // Reset name to empty string
       setAmount(""); // Reset amount to empty string
     }
@@ -72,7 +72,7 @@ function AddExpense({ budgetId, user, refreshData, totalIncome, totalExpenses })
     <div className="border p-5 rounded-lg">
       <h2 className="font-bold text-lg">Add Expense</h2>
       <div className="mt-2">
-        <h2 className="text-black font-medium my-1">Expense Name</h2>
+        <h2 className="text-black font-medium my-1">LocationName</h2>
         <Input
           value={name}
           placeholder="e.g. Groceries"
@@ -80,7 +80,7 @@ function AddExpense({ budgetId, user, refreshData, totalIncome, totalExpenses })
         />
       </div>
       <div className="mt-2">
-        <h2 className="text-black font-medium my-1">Expense Amount</h2>
+        <h2 className="text-black font-medium my-1">LocationAmount</h2>
         <Input
           value={amount}
           type="number"
@@ -100,9 +100,9 @@ function AddExpense({ budgetId, user, refreshData, totalIncome, totalExpenses })
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Expense Exceeds Income</AlertDialogTitle>
+            <AlertDialogTitle>LocationExceeds Income</AlertDialogTitle>
             <AlertDialogDescription>
-              <p>This expense of {formatCurrency(Number(amount))} will exceed your total income.</p>
+              <p>This Locationof {formatCurrency(Number(amount))} will exceed your total income.</p>
               <p className="mt-2">
                 Current Income: {formatCurrency(totalIncome)}<br />
                 Current Expenses: {formatCurrency(totalExpenses)}<br />

@@ -1,12 +1,12 @@
-# Expense Tracker Website
-This project is an Expense Tracker Website built using Next.js, Drizzle ORM, PostgreSQL, and Tailwind CSS. The application allows users to create budgets, add expenses, and visualize their spending with a bar chart.
+# LocationTracker Website
+This project is an LocationTracker Website built using Next.js, Drizzle ORM, PostgreSQL, and Tailwind CSS. The application allows users to create budgets, add expenses, and visualize their spending with a bar chart.
 
 # Features
 **Budget Management:** 
 
 Users can create budgets for different expenses.
 
-**Expense Tracking:** 
+**LocationTracking:** 
 
 Add expenses to each budget and track them effectively.
 
