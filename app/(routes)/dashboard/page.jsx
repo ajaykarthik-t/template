@@ -93,9 +93,109 @@ function Dashboard() {
     return R * c;
   };
 
+  const [shakeThreshold, setShakeThreshold] = useState(15); // Adjustable sensitivity
+  const [shakeCooldown, setShakeCooldown] = useState(false);
+  const [shakeCounter, setShakeCounter] = useState(0);
+  const [lastShakeTime, setLastShakeTime] = useState(0);
+  const [showShakeAlert, setShowShakeAlert] = useState(false);
+
+  // Handle device shake detection
+  useEffect(() => {
+    let lastX = 0;
+    let lastY = 0;
+    let lastZ = 0;
+    
+    // Function to handle device motion events
+    const handleDeviceMotion = (event) => {
+      const acceleration = event.accelerationIncludingGravity;
+      
+      if (!acceleration) return;
+      
+      const currentTime = new Date().getTime();
+      
+      // Only process if we're not in cooldown and enough time has passed
+      if (!shakeCooldown && (currentTime - lastShakeTime) > 300) {
+        const x = acceleration.x;
+        const y = acceleration.y;
+        const z = acceleration.z;
+        
+        if (!lastX && !lastY && !lastZ) {
+          lastX = x;
+          lastY = y;
+          lastZ = z;
+          return;
+        }
+        
+        const deltaX = Math.abs(lastX - x);
+        const deltaY = Math.abs(lastY - y);
+        const deltaZ = Math.abs(lastZ - z);
+        
+        // If the shake is strong enough
+        if ((deltaX > shakeThreshold && deltaY > shakeThreshold) || 
+            (deltaX > shakeThreshold && deltaZ > shakeThreshold) || 
+            (deltaY > shakeThreshold && deltaZ > shakeThreshold)) {
+          
+          setLastShakeTime(currentTime);
+          setShakeCounter(prevCount => {
+            const newCount = prevCount + 1;
+            
+            // If user has shaken the device 3 times in quick succession
+            if (newCount >= 3) {
+              // Show confirmation alert
+              setShowShakeAlert(true);
+              
+              // Reset counter
+              return 0;
+            }
+            
+            // Reset counter after 2 seconds if they don't complete the pattern
+            setTimeout(() => {
+              setShakeCounter(0);
+            }, 2000);
+            
+            return newCount;
+          });
+        }
+        
+        lastX = x;
+        lastY = y;
+        lastZ = z;
+      }
+    };
+    
+    // Set up shake detection if device motion is available
+    if (typeof window !== 'undefined' && window.DeviceMotionEvent) {
+      window.addEventListener('devicemotion', handleDeviceMotion);
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined' && window.DeviceMotionEvent) {
+        window.removeEventListener('devicemotion', handleDeviceMotion);
+      }
+    };
+  }, [shakeCooldown, shakeThreshold, lastShakeTime]);
+  
+  // Handle SOS button click or shake activation
   const handleSOSClick = () => {
     // Start emergency call to number 100
     window.location.href = "tel:100";
+    
+    // Set a cooldown to prevent multiple triggers
+    setShakeCooldown(true);
+    setTimeout(() => {
+      setShakeCooldown(false);
+    }, 5000); // 5 seconds cooldown
+  };
+  
+  // Confirm SOS from shake
+  const confirmShakeSOSCall = () => {
+    setShowShakeAlert(false);
+    handleSOSClick();
+  };
+  
+  // Cancel SOS from shake
+  const cancelShakeSOSCall = () => {
+    setShowShakeAlert(false);
   };
 
   // Function to render the location information and map
@@ -270,9 +370,42 @@ function Dashboard() {
           SOS EMERGENCY
         </button>
         <p className="mt-4 text-gray-600 text-center">
-          Press the SOS button to immediately call emergency services (100)
+          Press the SOS button or shake your phone rapidly to call emergency services (100)
         </p>
       </div>
+      
+      {/* Shake detection alert */}
+      {showShakeAlert && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full">
+            <div className="text-center mb-4">
+              <div className="h-20 w-20 mx-auto mb-4 text-red-600">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">Emergency Call</h3>
+              <p className="text-gray-600 mt-2">
+                Phone shake detected. Make emergency call to 100?
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button 
+                onClick={cancelShakeSOSCall}
+                className="w-1/2 py-2 bg-gray-200 text-gray-800 rounded"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmShakeSOSCall}
+                className="w-1/2 py-2 bg-red-600 text-white rounded"
+              >
+                Call Emergency
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Quick contacts - additional feature for women's safety app */}
       <div className="mt-10">
@@ -313,7 +446,7 @@ function Dashboard() {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-yellow-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            Keep your phone charged and easily accessible
+            In emergencies, shake your phone rapidly to trigger the SOS call
           </li>
         </ul>
       </div>
