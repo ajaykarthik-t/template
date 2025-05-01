@@ -128,13 +128,17 @@ function Dashboard() {
       );
     }
 
-    // Create map URL with embedded location pin
+    // Create map URL with OpenStreetMap
     const mapUrl = location ? 
-      `https://www.google.com/maps/embed/v1/place?key=AIzaSyBaS9UTc3TbPcaSUoZ0QS5a9hbx_EeHtNk&q=${location.latitude},${location.longitude}&zoom=16` : '';
+      `https://www.openstreetmap.org/export/embed.html?bbox=${location.longitude - 0.01}%2C${location.latitude - 0.01}%2C${location.longitude + 0.01}%2C${location.latitude + 0.01}&layer=mapnik&marker=${location.latitude}%2C${location.longitude}` : '';
+    
+    // Alternative URL for OSM - this one zooms in more and shows just the marker
+    const osmUrl = location ?
+      `https://www.openstreetmap.org/?mlat=${location.latitude}&mlon=${location.longitude}#map=16/${location.latitude}/${location.longitude}` : '';
 
     return (
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        {/* Map embed - showing the roads */}
+        {/* Map embed - showing the roads using OpenStreetMap */}
         <div className="w-full h-64 relative">
           {location ? (
             <iframe
@@ -179,6 +183,21 @@ function Dashboard() {
               className={`h-2 rounded-full ${location?.accuracy < 20 ? 'bg-green-500' : location?.accuracy < 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
               style={{ width: `${Math.max(5, Math.min(100, 100 - (location?.accuracy / 100 * 100)))}%` }}
             ></div>
+          </div>
+          
+          {/* Link to open in full OSM */}
+          <div className="mt-4">
+            <a 
+              href={osmUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 flex items-center justify-center w-full py-2 border border-blue-600 rounded-lg"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              View Full Map
+            </a>
           </div>
           
           <div className="mt-4 text-xs text-center text-gray-600">
