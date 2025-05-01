@@ -23,7 +23,7 @@ function SideNav({ isSideNavOpen, onClose }) {
     },  
     {
       id: 2,
-      name: "⁠Recurring ",
+      name: "Template ",
       icon: ReceiptText,
       path: "/dashboard/recurring", 
     },

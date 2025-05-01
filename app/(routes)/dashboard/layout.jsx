@@ -13,20 +13,7 @@ function DashboardLayout({ children }) {
   const router = useRouter();
   const [isSideNavOpen, setIsSideNavOpen] = useState(false);
 
-  useEffect(() => {
-    user && checkUserBudgets();
-  }, [user]);
 
-  const checkUserBudgets = async () => {
-    const result = await db
-      .select()
-      .from(Budgets)
-      .where(eq(Budgets.createdBy, user?.primaryEmailAddress?.emailAddress));
-
-    if (result?.length == 0) {
-      router.replace("/dashboard/budgets");
-    }
-  };
 
   const toggleSideNav = () => {
     setIsSideNavOpen(!isSideNavOpen);
