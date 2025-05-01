@@ -98,11 +98,11 @@ function Dashboard() {
     window.location.href = "tel:100";
   };
 
-  // Function to render the location information
+  // Function to render the location information and map
   const renderLocationInfo = () => {
     if (loading) {
       return (
-        <div className="h-64 flex items-center justify-center bg-gray-100 rounded-lg">
+        <div className="h-80 flex items-center justify-center bg-gray-100 rounded-lg">
           <div className="text-center">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-red-500 mx-auto mb-2"></div>
             <p className="text-gray-600">Locating you...</p>
@@ -113,7 +113,7 @@ function Dashboard() {
 
     if (locationError) {
       return (
-        <div className="h-64 flex items-center justify-center bg-gray-100 rounded-lg">
+        <div className="h-80 flex items-center justify-center bg-gray-100 rounded-lg">
           <div className="text-red-500 text-center p-4">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -128,28 +128,37 @@ function Dashboard() {
       );
     }
 
+    // Create map URL with embedded location pin
+    const mapUrl = location ? 
+      `https://www.google.com/maps/embed/v1/place?key=AIzaSyBaS9UTc3TbPcaSUoZ0QS5a9hbx_EeHtNk&q=${location.latitude},${location.longitude}&zoom=16` : '';
+
     return (
-      <div className="relative bg-white rounded-lg shadow-lg overflow-hidden">
-        {/* Location visualization */}
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center">
-            <div className="relative w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4">
-              <div className="absolute w-12 h-12 bg-blue-400 rounded-full animate-ping opacity-30"></div>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
+      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+        {/* Map embed - showing the roads */}
+        <div className="w-full h-64 relative">
+          {location ? (
+            <iframe
+              title="Your location map"
+              className="w-full h-full border-0"
+              loading="lazy"
+              allowFullScreen
+              src={mapUrl}
+            ></iframe>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gray-100">
+              <p className="text-gray-600">Map loading...</p>
             </div>
-            <div>
-              <h4 className="font-medium">Live Location</h4>
-              <p className="text-sm text-gray-600">Last updated: {new Date().toLocaleTimeString()}</p>
-            </div>
-            <div className="ml-auto bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Active</div>
+          )}
+          
+          {/* Location status overlay */}
+          <div className="absolute top-3 right-3 bg-white px-3 py-1 rounded-full shadow-md text-xs flex items-center">
+            <span className="h-2 w-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+            Live tracking
           </div>
         </div>
         
         {/* Coordinates */}
-        <div className="p-4">
+        <div className="p-4 border-t border-gray-200">
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div className="bg-gray-50 p-3 rounded-lg">
               <p className="text-xs text-gray-500">Latitude</p>
@@ -172,23 +181,12 @@ function Dashboard() {
             ></div>
           </div>
           
-          {/* Link to open in maps */}
-          <div className="mt-4">
-            <a 
-              href={`https://www.google.com/maps/search/?api=1&query=${location?.latitude},${location?.longitude}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 flex items-center justify-center w-full py-2 border border-blue-600 rounded-lg"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-              View on Google Maps
-            </a>
+          <div className="mt-4 text-xs text-center text-gray-600">
+            <p>Last updated: {new Date().toLocaleTimeString()}</p>
           </div>
         </div>
         
-        {/* Location history - last 5 points */}
+        {/* Location history - last few points */}
         {locationHistory.length > 1 && (
           <div className="p-4 border-t border-gray-200">
             <h4 className="text-sm font-medium mb-2">Location History</h4>
