@@ -1,5 +1,5 @@
 import React from "react";
-import Image from "next/image";
+
 function Hero() {
   return (
     <section className="bg-gray-900 text-white flex items-center flex-col">
@@ -24,13 +24,6 @@ function Hero() {
           </div>
         </div>
       </div>
-      {/* <Image
-        src={"/dashboard.png"}
-        alt="dashboard placeholder"
-        width={1000}
-        height={700}
-        className="-mt-[10%] rounded-xl border-2 mg-10"
-      /> */}
       <div className="h-9"></div>
     </section>
   );
