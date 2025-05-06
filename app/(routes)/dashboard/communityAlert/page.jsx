@@ -1,73 +1,82 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from "@clerk/clerk-react";
-import { initializeApp } from "firebase/app";
-import { 
-  getFirestore, 
-  collection, 
-  addDoc, 
-  query, 
-  orderBy, 
-  onSnapshot, 
-  serverTimestamp,
-  limit
-} from "firebase/firestore";
 
-// Your Firebase configuration
-// Replace these values with your actual Firebase project details
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
+// This is a simulated backend service that would typically be replaced
+// with a real backend API in production
+class MockChatService {
+  static listeners = [];
+  static messages = [
+    {
+      id: '1',
+      name: "Safety Admin",
+      text: "Welcome to Community Alerts! This is a safe space to share safety tips and report incidents in your area.",
+      timestamp: new Date(Date.now() - 3600000).toISOString(),
+      type: "system"
+    }
+  ];
+  static activeUsers = 3;
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+  static subscribe(callback) {
+    this.listeners.push(callback);
+    callback(this.messages, this.activeUsers);
+    
+    // Simulate other users occasionally joining/leaving
+    const userInterval = setInterval(() => {
+      this.activeUsers = Math.max(1, Math.floor(Math.random() * 8) + 1);
+      this.notifyListeners();
+    }, 30000);
+    
+    return () => {
+      this.listeners = this.listeners.filter(listener => listener !== callback);
+      clearInterval(userInterval);
+    };
+  }
+
+  static addMessage(message) {
+    const newMessage = {
+      ...message,
+      id: Date.now().toString(),
+      timestamp: new Date().toISOString()
+    };
+    
+    this.messages = [...this.messages, newMessage];
+    this.notifyListeners();
+    
+    // In a real app, this would be an API call to your backend
+    return Promise.resolve(newMessage);
+  }
+
+  static notifyListeners() {
+    this.listeners.forEach(callback => callback(this.messages, this.activeUsers));
+  }
+}
 
 function CommunityAlert() {
   const { user } = useUser();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [activeUsers, setActiveUsers] = useState(1);
   const messagesEndRef = useRef(null);
-  const [activeUsers, setActiveUsers] = useState(1); // Start with at least one
 
-  // Subscribe to messages in real-time
+  // Subscribe to chat updates
   useEffect(() => {
-    // Create a query to get messages ordered by timestamp
-    const messagesQuery = query(
-      collection(db, "messages"),
-      orderBy("timestamp", "asc"),
-      limit(100) // Limit to last 100 messages for performance
-    );
-
-    // Set up real-time listener
-    const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-      const messageList = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        messageList.push({
-          id: doc.id,
-          name: data.name,
-          text: data.text,
-          timestamp: data.timestamp?.toDate().toISOString() || new Date().toISOString(),
-          type: data.type
-        });
+    // Simulate a connection delay for realism
+    const loadingTimeout = setTimeout(() => {
+      const unsubscribe = MockChatService.subscribe((updatedMessages, updatedActiveUsers) => {
+        setMessages(updatedMessages);
+        setActiveUsers(updatedActiveUsers);
+        setLoading(false);
       });
       
-      setMessages(messageList);
-      setLoading(false);
-      
-      // Simulate random active users between 2-15
-      setActiveUsers(Math.floor(Math.random() * 14) + 2);
-    });
-
-    // Clean up subscription on unmount
-    return () => unsubscribe();
+      return () => {
+        clearTimeout(loadingTimeout);
+        unsubscribe();
+      };
+    }, 1000);
+    
+    return () => clearTimeout(loadingTimeout);
   }, []);
 
   // Auto-scroll to bottom when new messages arrive
@@ -75,17 +84,15 @@ function CommunityAlert() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Function to send a message to Firestore
-  const sendMessageToFirestore = async (messageType) => {
+  // Send message function
+  const sendMessage = async (messageType) => {
     if (!newMessage.trim()) return;
     
     try {
-      // Add new document to "messages" collection
-      await addDoc(collection(db, "messages"), {
+      await MockChatService.addMessage({
         name: user?.fullName || "Anonymous User",
         text: newMessage,
-        timestamp: serverTimestamp(), // Server timestamp for accurate ordering
-        type: messageType
+        type: messageType,
       });
       
       // Clear input field
@@ -98,11 +105,11 @@ function CommunityAlert() {
 
   const handleSendMessage = (e) => {
     e.preventDefault();
-    sendMessageToFirestore("message");
+    sendMessage("message");
   };
 
   const handleAlertSubmit = () => {
-    sendMessageToFirestore("alert");
+    sendMessage("alert");
   };
 
   const formatTime = (timestamp) => {
@@ -110,13 +117,12 @@ function CommunityAlert() {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Function to check if user is currently typing (for a real app, this would use Firebase presence)
+  // Simulate typing indicators
   const [typingUsers, setTypingUsers] = useState([]);
   
-  // Simulate typing indicators (in a real app, this would use Firebase)
   useEffect(() => {
     if (newMessage.trim() && user?.fullName) {
-      // In a real app, would update a 'typing' status in Firebase
+      // In a real app, would update a 'typing' status on the server
       console.log(`${user.fullName} is typing...`);
     }
   }, [newMessage, user]);
@@ -166,15 +172,6 @@ function CommunityAlert() {
             </div>
           ) : (
             <div className="space-y-3">
-              {/* Welcome message that always shows at the top */}
-              <div className="p-3 rounded-lg max-w-3xl bg-blue-100 text-blue-800 mx-auto text-center mb-6">
-                <div className="flex items-center justify-center mb-1">
-                  <strong className="text-sm">Safety Admin</strong>
-                </div>
-                <p className="text-sm">Welcome to Community Alerts! This is a safe space to share safety tips and report incidents in your area.</p>
-              </div>
-              
-              {/* Dynamic messages */}
               {messages.map((message) => (
                 <div 
                   key={message.id} 
