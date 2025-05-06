@@ -23,9 +23,14 @@ function SideNav({ isSideNavOpen, onClose }) {
     },  
     {
       id: 2,
-      name: "Template ",
+      name: "Community ",
       icon: ReceiptText,
-      path: "/dashboard/recurring", 
+      path: "/dashboard/communityAlert", 
+    },    {
+      id: 3,
+      name: "Zone Report ",
+      icon: ReceiptText,
+      path: "/dashboard/zoneReport", 
     },
   ];
 

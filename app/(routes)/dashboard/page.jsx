@@ -1,12 +1,34 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { useUser } from "@clerk/nextjs";
 
 function Dashboard() {
+  const { user } = useUser(); // Using the user context
   const [location, setLocation] = useState(null);
   const [locationError, setLocationError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [watchId, setWatchId] = useState(null);
   const [locationHistory, setLocationHistory] = useState([]);
+
+  // Get user budget and income data when user is available
+  useEffect(() => {
+    if (user) {
+      getBudgetList();
+      getIncomeData();
+    }
+  }, [user]);
+
+  // Function to get budget list (stub for now)
+  const getBudgetList = () => {
+    // Implementation will be added later
+    console.log("Getting budget list for user:", user?.fullName);
+  };
+
+  // Function to get income data (stub for now)
+  const getIncomeData = () => {
+    // Implementation will be added later
+    console.log("Getting income data for user:", user?.fullName);
+  };
 
   // Get and watch user location
   useEffect(() => {
@@ -329,7 +351,10 @@ function Dashboard() {
   return (
     <div className="p-6 md:p-10">      
       <div className="flex items-center justify-between mb-6">
-        <h2 className="font-bold text-2xl md:text-3xl">Women Safety App</h2>
+        {/* Updated heading with user's name */}
+        <h2 className="font-bold text-2xl md:text-3xl">
+          Hi, {user?.fullName} 👋
+        </h2>
         <div className="flex items-center">
           <span className={`h-3 w-3 rounded-full mr-2 ${locationError ? 'bg-red-500' : location ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></span>
           <span className="text-sm font-medium">
@@ -407,9 +432,9 @@ function Dashboard() {
         </div>
       )}
       
-      {/* Quick contacts - additional feature for women's safety app */}
+      {/* Emergency Contacts - Personalized with the user's contacts */}
       <div className="mt-10">
-        <h3 className="font-semibold text-lg mb-4">Quick Emergency Contacts</h3>
+        <h3 className="font-semibold text-lg mb-4">Your Emergency Contacts</h3>
         <div className="grid grid-cols-2 gap-3">
           <button className="bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-lg flex items-center justify-center shadow-md">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
