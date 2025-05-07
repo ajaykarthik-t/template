@@ -1,618 +1,457 @@
 "use client";
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUser } from "@clerk/clerk-react";
-import { 
-  collection, 
-  addDoc, 
-  query, 
-  onSnapshot, 
-  serverTimestamp, 
-  getDocs 
-} from 'firebase/firestore';
-import { db } from '../../../../lib/firebase';
-import Script from 'next/script';
+import Link from 'next/link';
 
-function SafetyMapView() {
+export default function SimpleSafetyMap() {
   const { user } = useUser();
+  const [location, setLocation] = useState(null);
+  const [locationError, setLocationError] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [mapLoaded, setMapLoaded] = useState(false);
-  const [firebaseConnected, setFirebaseConnected] = useState(false);
   const [reportedZones, setReportedZones] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState('unsafe');
-  const [feedback, setFeedback] = useState('');
-  
-  // Map refs
-  const mapRef = useRef(null);
-  const googleMapRef = useRef(null);
-  const drawingManagerRef = useRef(null);
-  const shapesRef = useRef([]);
+  const [currentCategory, setCurrentCategory] = useState('unsafe');
+  const [showReportForm, setShowReportForm] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   
   // Get user info
   const userName = user?.fullName || "Anonymous User";
-  const userId = user?.id || "anonymous";
   
   // Zone categories with colors
   const zoneCategories = {
-    unsafe: {
-      name: "Unsafe Area",
-      color: "#ff0000",
-      fillColor: "#ff000060"
-    },
-    suspicious: {
-      name: "Suspicious Activity",
-      color: "#ff9900",
-      fillColor: "#ff990060"
-    },
-    hazard: {
-      name: "Hazard",
-      color: "#ffff00",
-      fillColor: "#ffff0060"
-    },
-    help: {
-      name: "Help Needed",
-      color: "#0000ff",
-      fillColor: "#0000ff60"
-    }
+    unsafe: { name: "Unsafe Area", color: "#FF0000" },
+    suspicious: { name: "Suspicious Activity", color: "#FF9900" },
+    hazard: { name: "Hazard", color: "#FFFF00" },
+    help: { name: "Help Needed", color: "#0000FF" }
   };
   
-  // Check Firebase connection
+  // Get user's location
   useEffect(() => {
-    console.log("Checking Firebase connection...");
-    try {
-      const testConnection = async () => {
-        try {
-          await getDocs(collection(db, "messages")).then(() => {
-            console.log("✅ Firestore connected successfully");
-            setFirebaseConnected(true);
-          });
-        } catch (error) {
-          console.error("❌ Firestore connection error:", error);
-        }
-      };
-      
-      testConnection();
-    } catch (error) {
-      console.error("Firebase initialization error:", error);
-    }
-    
-    // Force loading to end after 5 seconds to prevent infinite loading
-    const timer = setTimeout(() => {
-      if (loading) {
-        console.log("Loading timeout reached - forcing loading to end");
-        setLoading(false);
-      }
-    }, 5000);
-    
-    return () => clearTimeout(timer);
-  }, [loading]);
-  
-  // Load reported zones from Firebase
-  useEffect(() => {
-    if (!firebaseConnected) return;
-    
-    try {
-      const zonesRef = collection(db, "safetyZones");
-      
-      // Listen for real-time updates
-      const unsubscribe = onSnapshot(
-        zonesRef,
-        (snapshot) => {
-          const zones = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            // Convert timestamps to JavaScript Date objects
-            timestamp: doc.data().timestamp?.toDate?.() || new Date()
-          }));
-          
-          setReportedZones(zones);
-          setLoading(false);
-        },
-        (error) => {
-          console.error("Error loading safety zones:", error);
-          setFeedback("Error loading safety zones. Please try again.");
-          setLoading(false);
-        }
-      );
-      
-      return () => unsubscribe();
-    } catch (error) {
-      console.error("Error setting up zones listener:", error);
-      setLoading(false);
-    }
-  }, [firebaseConnected]);
-  
-  // Handle Google Maps API load
-  const handleGoogleMapsLoad = () => {
-    console.log("Google Maps API loaded");
-    setMapLoaded(true);
-  };
-  
-  // Initialize Google Maps after API is loaded
-  useEffect(() => {
-    if (!mapLoaded || !mapRef.current || googleMapRef.current) return;
-    
-    initializeMap();
-  }, [mapLoaded]);
-  
-  // Initialize Google Maps
-  const initializeMap = () => {
-    // Try to get user's location first
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const { latitude, longitude } = position.coords;
-          createMap({ lat: latitude, lng: longitude });
+          const newLocation = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            timestamp: new Date().toLocaleTimeString()
+          };
+          
+          setLocation(newLocation);
+          setLoading(false);
         },
         (error) => {
           console.error("Error getting location:", error);
-          // Default to a central location if we can't get the user's location
-          createMap({ lat: 39.8283, lng: -98.5795 });
-        }
+          setLocationError(error.message);
+          setLoading(false);
+        },
+        { enableHighAccuracy: true }
       );
     } else {
-      // Default location if geolocation not available
-      createMap({ lat: 39.8283, lng: -98.5795 });
+      setLocationError("Geolocation is not supported by this browser");
+      setLoading(false);
     }
-  };
+  }, []);
   
-  // Create the Google Map
-  const createMap = (center) => {
-    try {
-      if (!window.google || !window.google.maps) {
-        console.error("Google Maps API not loaded");
-        return;
-      }
-      
-      // Create the map
-      const googleMap = new window.google.maps.Map(mapRef.current, {
-        center,
-        zoom: 15,
-        mapTypeControl: true,
-        streetViewControl: false,
-        fullscreenControl: true,
-        zoomControl: true,
-      });
-      
-      // Save reference to map
-      googleMapRef.current = googleMap;
-      
-      // Create drawing manager
-      const drawingManager = new window.google.maps.drawing.DrawingManager({
-        drawingMode: null,
-        drawingControl: true,
-        drawingControlOptions: {
-          position: window.google.maps.ControlPosition.TOP_CENTER,
-          drawingModes: [
-            window.google.maps.drawing.OverlayType.CIRCLE,
-            window.google.maps.drawing.OverlayType.POLYGON,
-            window.google.maps.drawing.OverlayType.RECTANGLE
-          ],
-        },
-        circleOptions: {
-          fillColor: zoneCategories.unsafe.fillColor,
-          strokeColor: zoneCategories.unsafe.color,
-          fillOpacity: 0.5,
-          strokeWeight: 2,
-          editable: true,
-          draggable: true,
-        },
-        polygonOptions: {
-          fillColor: zoneCategories.unsafe.fillColor,
-          strokeColor: zoneCategories.unsafe.color,
-          fillOpacity: 0.5,
-          strokeWeight: 2,
-          editable: true,
-          draggable: true,
-        },
-        rectangleOptions: {
-          fillColor: zoneCategories.unsafe.fillColor,
-          strokeColor: zoneCategories.unsafe.color,
-          fillOpacity: 0.5,
-          strokeWeight: 2,
-          editable: true,
-          draggable: true,
-        },
-      });
-      
-      // Add drawing manager to map
-      drawingManager.setMap(googleMap);
-      drawingManagerRef.current = drawingManager;
-      
-      // Create user position marker
-      const userMarker = new window.google.maps.Marker({
-        position: center,
-        map: googleMap,
-        title: "Your Location",
-        animation: window.google.maps.Animation.DROP,
-      });
-      
-      // Add user marker info window
-      const userInfoWindow = new window.google.maps.InfoWindow({
-        content: "<strong>Your Location</strong><p>You are here</p>"
-      });
-      
-      userMarker.addListener("click", () => {
-        userInfoWindow.open(googleMap, userMarker);
-      });
-      
-      // Handle completed drawings
-      window.google.maps.event.addListener(drawingManager, 'overlaycomplete', (event) => {
-        // Switch back to hand tool after drawing
-        drawingManager.setDrawingMode(null);
-        
-        const newShape = event.overlay;
-        const shapeType = event.type;
-        
-        // Store shape data
-        let shapeData;
-        
-        if (shapeType === window.google.maps.drawing.OverlayType.CIRCLE) {
-          const center = newShape.getCenter();
-          const radius = newShape.getRadius();
-          
-          shapeData = {
-            type: 'circle',
-            center: { lat: center.lat(), lng: center.lng() },
-            radius: radius
-          };
-        } 
-        else if (shapeType === window.google.maps.drawing.OverlayType.POLYGON) {
-          const path = newShape.getPath();
-          const coordinates = [];
-          
-          for (let i = 0; i < path.getLength(); i++) {
-            const point = path.getAt(i);
-            coordinates.push({ lat: point.lat(), lng: point.lng() });
-          }
-          
-          shapeData = {
-            type: 'polygon',
-            coordinates: coordinates
-          };
-        }
-        else if (shapeType === window.google.maps.drawing.OverlayType.RECTANGLE) {
-          const bounds = newShape.getBounds();
-          const ne = bounds.getNorthEast();
-          const sw = bounds.getSouthWest();
-          
-          shapeData = {
-            type: 'rectangle',
-            bounds: {
-              north: ne.lat(),
-              east: ne.lng(),
-              south: sw.lat(),
-              west: sw.lng()
-            }
-          };
-        }
-        
-        // Show confirmation dialog
-        if (shapeData) {
-          showReportConfirmation(shapeData, newShape);
-        }
-      });
-      
-      // Display existing zones
-      displayReportedZones();
-      
-    } catch (error) {
-      console.error("Error creating map:", error);
-      setFeedback("Error creating map. Please try again.");
-    }
-  };
-  
-  // Display all reported zones on the map
-  const displayReportedZones = () => {
-    if (!googleMapRef.current || !reportedZones.length) return;
-    
-    // Clear existing shapes
-    shapesRef.current.forEach(shape => {
-      shape.setMap(null);
-    });
-    shapesRef.current = [];
-    
-    // Add reported zones to map
-    reportedZones.forEach(zone => {
-      const zoneStyle = zoneCategories[zone.category] || zoneCategories.unsafe;
-      let shape;
-      
-      if (zone.type === 'circle' && zone.center && zone.radius) {
-        shape = new window.google.maps.Circle({
-          center: { lat: zone.center.lat, lng: zone.center.lng },
-          radius: zone.radius,
-          map: googleMapRef.current,
-          fillColor: zoneStyle.fillColor,
-          strokeColor: zoneStyle.color,
-          fillOpacity: 0.5,
-          strokeWeight: 2,
-          editable: false,
-          draggable: false,
-        });
-      } 
-      else if (zone.type === 'polygon' && zone.coordinates && zone.coordinates.length) {
-        shape = new window.google.maps.Polygon({
-          paths: zone.coordinates.map(coord => ({ lat: coord.lat, lng: coord.lng })),
-          map: googleMapRef.current,
-          fillColor: zoneStyle.fillColor,
-          strokeColor: zoneStyle.color,
-          fillOpacity: 0.5,
-          strokeWeight: 2,
-          editable: false,
-          draggable: false,
-        });
-      }
-      else if (zone.type === 'rectangle' && zone.bounds) {
-        shape = new window.google.maps.Rectangle({
-          bounds: {
-            north: zone.bounds.north,
-            east: zone.bounds.east,
-            south: zone.bounds.south,
-            west: zone.bounds.west
-          },
-          map: googleMapRef.current,
-          fillColor: zoneStyle.fillColor,
-          strokeColor: zoneStyle.color,
-          fillOpacity: 0.5,
-          strokeWeight: 2,
-          editable: false,
-          draggable: false,
-        });
-      }
-      
-      if (shape) {
-        // Add info window with zone details
-        const infoContent = `
-          <div>
-            <strong>${zoneStyle.name}</strong>
-            <p>Reported by: ${zone.userName || 'Anonymous'}</p>
-            <p>Reported: ${zone.timestamp?.toLocaleString() || 'Unknown'}</p>
-          </div>
-        `;
-        
-        const infoWindow = new window.google.maps.InfoWindow({
-          content: infoContent
-        });
-        
-        window.google.maps.event.addListener(shape, 'click', function() {
-          infoWindow.setPosition(this.getCenter ? this.getCenter() : this.getBounds().getCenter());
-          infoWindow.open(googleMapRef.current);
-        });
-        
-        shapesRef.current.push(shape);
-      }
-    });
-  };
-  
-  // Update zone display when zones change
+  // For demo/prototyping purposes, we'll use local storage
+  // instead of Firebase to store reported zones
   useEffect(() => {
-    if (googleMapRef.current) {
-      displayReportedZones();
+    // Load saved reports from localStorage
+    try {
+      const savedReports = localStorage.getItem('safetyReports');
+      if (savedReports) {
+        setReportedZones(JSON.parse(savedReports));
+      }
+    } catch (error) {
+      console.error("Error loading saved reports:", error);
+    }
+  }, []);
+  
+  // Save reports to localStorage whenever they change
+  useEffect(() => {
+    if (reportedZones.length > 0) {
+      localStorage.setItem('safetyReports', JSON.stringify(reportedZones));
     }
   }, [reportedZones]);
   
-  // Show confirmation modal for reporting
-  const showReportConfirmation = (shapeData, drawnShape) => {
-    // Create and style the modal
-    const modalContainer = document.createElement('div');
-    modalContainer.style.position = 'fixed';
-    modalContainer.style.top = '0';
-    modalContainer.style.left = '0';
-    modalContainer.style.width = '100%';
-    modalContainer.style.height = '100%';
-    modalContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-    modalContainer.style.display = 'flex';
-    modalContainer.style.justifyContent = 'center';
-    modalContainer.style.alignItems = 'center';
-    modalContainer.style.zIndex = '1000';
+  // Submit report locally (no Firebase dependency)
+  const submitReport = async (e) => {
+    e.preventDefault();
     
-    const modal = document.createElement('div');
-    modal.style.backgroundColor = 'white';
-    modal.style.padding = '20px';
-    modal.style.borderRadius = '8px';
-    modal.style.width = '90%';
-    modal.style.maxWidth = '400px';
-    modal.style.maxHeight = '90vh';
-    modal.style.overflow = 'auto';
-    
-    // Add content to modal
-    modal.innerHTML = `
-      <h3 style="font-size: 18px; font-weight: bold; margin-bottom: 15px;">Report Safety Zone</h3>
-      <p style="margin-bottom: 15px;">What type of zone are you reporting?</p>
-      <div id="category-selection" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
-        ${Object.entries(zoneCategories).map(([key, category]) => `
-          <label style="display: flex; align-items: center; cursor: pointer;">
-            <input type="radio" name="category" value="${key}" ${key === selectedCategory ? 'checked' : ''} style="margin-right: 8px;">
-            <span style="display: inline-block; width: 15px; height: 15px; background-color: ${category.color}; margin-right: 8px; border-radius: 50%;"></span>
-            ${category.name}
-          </label>
-        `).join('')}
-      </div>
-      <div style="display: flex; justify-content: flex-end; gap: 10px;">
-        <button id="cancel-report" style="padding: 8px 16px; border: 1px solid #ccc; background-color: #f5f5f5; border-radius: 4px;">Cancel</button>
-        <button id="confirm-report" style="padding: 8px 16px; border: none; background-color: #d32f2f; color: white; border-radius: 4px;">Report</button>
-      </div>
-    `;
-    
-    modalContainer.appendChild(modal);
-    document.body.appendChild(modalContainer);
-    
-    // Handle cancel button
-    document.getElementById('cancel-report').addEventListener('click', () => {
-      // Remove the shape from the map
-      drawnShape.setMap(null);
-      document.body.removeChild(modalContainer);
-    });
-    
-    // Handle confirm button
-    document.getElementById('confirm-report').addEventListener('click', () => {
-      // Get selected category
-      const selectedCat = document.querySelector('input[name="category"]:checked').value;
-      
-      // Remove the temporary shape
-      drawnShape.setMap(null);
-      
-      // Report the zone
-      reportZone(shapeData, selectedCat);
-      
-      // Close the modal
-      document.body.removeChild(modalContainer);
-    });
-  };
-  
-  // Submit zone report to Firebase
-  const reportZone = async (zoneData, category) => {
-    if (!userId || userId === "anonymous") {
-      setFeedback("Please log in to report zones");
-      return;
-    }
+    if (!location) return;
     
     try {
-      setFeedback("Submitting report...");
+      setSubmitting(true);
       
-      // Create zone document
-      const zoneDoc = {
-        userId: userId,
+      // Create new report
+      const newReport = {
+        id: Date.now().toString(),
         userName: userName,
-        category: category,
-        timestamp: serverTimestamp(),
-        type: zoneData.type,
-        // Store the actual zone data based on type
-        ...(zoneData.type === 'circle' 
-          ? { 
-              center: zoneData.center,
-              radius: zoneData.radius 
-            } 
-          : zoneData.type === 'polygon'
-            ? { coordinates: zoneData.coordinates }
-            : { bounds: zoneData.bounds }
-        ),
-        active: true // For future use if we want to expire zones
+        category: currentCategory,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        timestamp: new Date().toISOString()
       };
       
-      // Add to Firestore
-      await addDoc(collection(db, "safetyZones"), zoneDoc);
+      // Add to local state
+      setReportedZones(prev => [newReport, ...prev]);
       
-      setFeedback("Zone reported successfully!");
+      // Show success message
+      setReportSuccess(true);
+      setSubmitting(false);
       
-      // Clear feedback after 3 seconds
       setTimeout(() => {
-        setFeedback("");
+        setReportSuccess(false);
+        setShowReportForm(false);
       }, 3000);
+      
     } catch (error) {
-      console.error("Error reporting zone:", error);
-      setFeedback("Error reporting zone. Please try again.");
+      console.error("Error submitting report:", error);
+      setSubmitting(false);
     }
   };
   
-  // Handle reload button click
-  const handleReload = () => {
-    if (navigator.geolocation && googleMapRef.current) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const { latitude, longitude } = pos.coords;
-          googleMapRef.current.setCenter({ lat: latitude, lng: longitude });
-          googleMapRef.current.setZoom(15);
-        },
-        (error) => {
-          console.error("Error getting location:", error);
-          setFeedback("Could not get your location. Please allow location access.");
-        }
+  // Function to render the map and location info
+  const renderMap = () => {
+    if (loading) {
+      return (
+        <div className="h-96 flex items-center justify-center bg-gray-100 rounded-lg">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-red-500 mx-auto mb-2"></div>
+            <p className="text-gray-600">Locating you...</p>
+          </div>
+        </div>
       );
     }
-  };
-  
-  return (
-    <>
-      {/* Load Google Maps API */}
-      <Script
-        src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=drawing,places"
-        onLoad={handleGoogleMapsLoad}
-        strategy="afterInteractive"
-      />
-      
-      <div className="p-4 max-w-4xl mx-auto h-screen flex flex-col">
-        <div className="flex items-center justify-between mb-4 bg-red-600 p-3 rounded-lg text-white">
-          <h2 className="font-bold text-xl">Safety Map</h2>
-          <div>
-            <button 
-              onClick={handleReload}
-              className="bg-white text-red-600 px-3 py-1 rounded flex items-center text-sm"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              My Location
-            </button>
+
+    if (locationError) {
+      return (
+        <div className="h-96 flex items-center justify-center bg-gray-100 rounded-lg">
+          <div className="text-red-500 text-center p-4">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <p className="font-bold mb-2">Unable to get your location</p>
+            <p className="text-sm">{locationError}</p>
+            <p className="mt-4 text-sm">
+              Please enable location access in your browser settings. This is essential for reporting zones accurately.
+            </p>
           </div>
         </div>
-        
-        {/* Map info panel */}
-        <div className="bg-white rounded-lg shadow-md p-3 mb-4 text-sm">
-          <p className="mb-2">
-            <strong>How to report a zone:</strong> Use the drawing tools on the map to mark areas of concern.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(zoneCategories).map(([key, category]) => (
-              <div key={key} className="flex items-center">
-                <span className="inline-block w-3 h-3 rounded-full mr-1" style={{ backgroundColor: category.color }}></span>
-                <span>{category.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        
-        {/* Feedback message */}
-        {feedback && (
-          <div className="bg-blue-100 text-blue-800 p-3 rounded-lg mb-4 text-center">
-            {feedback}
-          </div>
-        )}
-        
-        {/* Map container */}
-        <div className="flex-1 relative rounded-lg overflow-hidden border border-gray-300 shadow-md">
-          {loading ? (
-            <div className="absolute inset-0 flex justify-center items-center bg-gray-100">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
-            </div>
+      );
+    }
+
+    // Create map URL with OpenStreetMap
+    const mapUrl = location ? 
+      `https://www.openstreetmap.org/export/embed.html?bbox=${location.longitude - 0.01}%2C${location.latitude - 0.01}%2C${location.longitude + 0.01}%2C${location.latitude + 0.01}&layer=mapnik&marker=${location.latitude}%2C${location.longitude}` : '';
+    
+    // URL to open in full map view
+    const osmUrl = location ?
+      `https://www.openstreetmap.org/?mlat=${location.latitude}&mlon=${location.longitude}#map=16/${location.latitude}/${location.longitude}` : '';
+
+    return (
+      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+        {/* Map embed using OpenStreetMap */}
+        <div className="w-full h-96 relative">
+          {location ? (
+            <iframe
+              title="Your location map"
+              className="w-full h-full border-0"
+              loading="lazy"
+              allowFullScreen
+              src={mapUrl}
+            ></iframe>
           ) : (
-            <div 
-              ref={mapRef} 
-              className="w-full h-full" 
-              id="map"
-            ></div>
+            <div className="w-full h-full flex items-center justify-center bg-gray-100">
+              <p className="text-gray-600">Map loading...</p>
+            </div>
+          )}
+          
+          {/* Location status overlay */}
+          <div className="absolute top-3 right-3 bg-white px-3 py-1 rounded-full shadow-md text-xs flex items-center">
+            <span className="h-2 w-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+            Location active
+          </div>
+          
+          {/* Safety Reports Count */}
+          {reportedZones.length > 0 && (
+            <div className="absolute top-3 left-3 bg-red-600 text-white px-3 py-1 rounded-full shadow-md text-xs">
+              {reportedZones.length} Safety Alert{reportedZones.length !== 1 ? 's' : ''}
+            </div>
           )}
         </div>
         
-        {/* Help text at bottom */}
-        <div className="mt-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
-          <h3 className="font-semibold text-base mb-2">Map Guidelines</h3>
-          <ul className="text-xs text-gray-700 space-y-1">
-            <li className="flex items-start">
-              <span className="text-amber-500 mr-1">•</span>
-              Use the drawing tools to mark areas on the map
-            </li>
-            <li className="flex items-start">
-              <span className="text-amber-500 mr-1">•</span>
-              Circle: For specific locations with a radius
-            </li>
-            <li className="flex items-start">
-              <span className="text-amber-500 mr-1">•</span>
-              Rectangle/Polygon: For marking specific areas or streets
-            </li>
-            <li className="flex items-start">
-              <span className="text-amber-500 mr-1">•</span>
-              Click on marked zones to see details about the report
-            </li>
-            <li className="flex items-start">
-              <span className="text-amber-500 mr-1">•</span>
-              Reported zones are visible to all users in the community
-            </li>
-          </ul>
+        {/* Location details */}
+        <div className="p-4 border-t border-gray-200">
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <p className="text-xs text-gray-500">Latitude</p>
+              <p className="font-medium">{location?.latitude.toFixed(6)}</p>
+            </div>
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <p className="text-xs text-gray-500">Longitude</p>
+              <p className="font-medium">{location?.longitude.toFixed(6)}</p>
+            </div>
+          </div>
+          
+          <div className="flex justify-between mb-1 items-center">
+            <p className="text-xs text-gray-500">GPS Accuracy</p>
+            <p className="text-xs font-medium text-gray-700">±{Math.round(location?.accuracy || 0)}m</p>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+            <div 
+              className={`h-2 rounded-full ${location?.accuracy < 20 ? 'bg-green-500' : location?.accuracy < 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
+              style={{ width: `${Math.max(5, Math.min(100, 100 - (location?.accuracy / 100 * 100)))}%` }}
+            ></div>
+          </div>
+          
+          {/* Action buttons */}
+          <div className="grid grid-cols-2 gap-2">
+            <a 
+              href={osmUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-blue-600 text-white text-center py-3 px-4 rounded-lg flex items-center justify-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              View Full Map
+            </a>
+            <button 
+              onClick={() => setShowReportForm(true)}
+              className="bg-red-600 text-white py-3 px-4 rounded-lg flex items-center justify-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              Report Safety Concern
+            </button>
+          </div>
         </div>
       </div>
-    </>
+    );
+  };
+  
+  // Render reporting form
+  const renderReportForm = () => {
+    if (!showReportForm) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20 p-4">
+        <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+          <h3 className="font-bold text-xl mb-4">Report Safety Concern</h3>
+          
+          {reportSuccess ? (
+            <div className="bg-green-100 text-green-800 p-6 rounded-lg mb-4 text-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto mb-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <p className="font-bold text-lg">Report Submitted Successfully</p>
+              <p className="text-sm mt-2">Thank you for helping keep the community safe.</p>
+            </div>
+          ) : (
+            <form onSubmit={submitReport}>
+              <div className="mb-6">
+                <p className="mb-2 font-medium">
+                  You're reporting a safety concern at:
+                </p>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p>Latitude: {location?.latitude.toFixed(6)}</p>
+                  <p>Longitude: {location?.longitude.toFixed(6)}</p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Accuracy: ±{Math.round(location?.accuracy || 0)}m
+                  </p>
+                </div>
+              </div>
+              
+              <div className="mb-6">
+                <label className="block font-medium mb-3">
+                  What type of safety concern?
+                </label>
+                <div className="space-y-2">
+                  {Object.entries(zoneCategories).map(([key, category]) => (
+                    <label key={key} className={`flex items-center p-3 border rounded-lg cursor-pointer ${currentCategory === key ? 'bg-gray-50 border-gray-400' : ''}`}>
+                      <input
+                        type="radio"
+                        name="category"
+                        value={key}
+                        checked={currentCategory === key}
+                        onChange={() => setCurrentCategory(key)}
+                        className="mr-3"
+                      />
+                      <span 
+                        className="inline-block w-5 h-5 rounded-full mr-3" 
+                        style={{ backgroundColor: category.color }}
+                      ></span>
+                      <span className="font-medium">{category.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="flex space-x-3">
+                <button
+                  type="button"
+                  className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium"
+                  onClick={() => setShowReportForm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium flex items-center justify-center"
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <>
+                      <div className="animate-spin mr-2 h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+                      Submitting...
+                    </>
+                  ) : (
+                    'Submit Report'
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  };
+  
+  // Render zone list
+  const renderReportedZones = () => {
+    if (reportedZones.length === 0) {
+      return (
+        <div className="bg-white rounded-lg shadow-md p-6 text-center text-gray-500">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p>No safety concerns have been reported in your area</p>
+          <button 
+            onClick={() => setShowReportForm(true)}
+            className="mt-4 text-red-600 font-medium hover:underline"
+          >
+            Report your first safety concern
+          </button>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="max-h-96 overflow-y-auto">
+          {reportedZones.map((zone) => {
+            const category = zoneCategories[zone.category] || zoneCategories.unsafe;
+            return (
+              <div key={zone.id} className="p-4 border-b border-gray-100 last:border-b-0">
+                <div className="flex items-center">
+                  <span 
+                    className="inline-block w-4 h-4 rounded-full mr-3" 
+                    style={{ backgroundColor: category.color }}
+                  ></span>
+                  <strong className="font-medium">{category.name}</strong>
+                  <span className="text-xs text-gray-500 ml-auto">
+                    {new Date(zone.timestamp).toLocaleString()}
+                  </span>
+                </div>
+                <div className="mt-2 text-sm">
+                  <p className="text-gray-700">
+                    Reported by: {zone.userName}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Location: {zone.latitude.toFixed(6)}, {zone.longitude.toFixed(6)}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+  
+  // Component's main rendering
+  return (
+    <div className="p-6 md:p-10 max-w-4xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="font-bold text-2xl md:text-3xl">
+          Safety Map
+        </h2>
+        <div className="flex items-center">
+          <span className={`h-3 w-3 rounded-full mr-2 ${locationError ? 'bg-red-500' : location ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></span>
+          <span className="text-sm font-medium">
+            {locationError ? 'Offline' : location ? 'Location Active' : 'Connecting...'}
+          </span>
+        </div>
+      </div>
+      
+      {/* Map Section */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-xl">Your Current Location</h3>
+          {location && !locationError && (
+            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+              Updated: {new Date().toLocaleTimeString()}
+            </span>
+          )}
+        </div>
+        
+        {renderMap()}
+        
+        {!locationError && location && (
+          <div className="mt-2 text-sm text-gray-600">
+            <p>
+              Your current location is shown on the map. Use "Report Safety Concern" to mark any unsafe areas.
+            </p>
+          </div>
+        )}
+      </div>
+      
+      {/* Reported Zones */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-xl">Safety Reports</h3>
+          <button 
+            onClick={() => setShowReportForm(true)}
+            className="text-xs bg-red-100 text-red-800 px-3 py-1 rounded-full hover:bg-red-200"
+          >
+            + New Report
+          </button>
+        </div>
+        
+        {renderReportedZones()}
+      </div>
+      
+      {/* Report modal */}
+      {renderReportForm()}
+      
+      {/* Safety Legend */}
+      <div className="mb-8">
+        <h3 className="font-semibold text-xl mb-4">Safety Alert Types</h3>
+        <div className="grid grid-cols-2 gap-4">
+          {Object.entries(zoneCategories).map(([key, category]) => (
+            <div key={key} className="bg-white rounded-lg shadow-sm p-3 border border-gray-100 flex items-center">
+              <span 
+                className="inline-block w-6 h-6 rounded-full mr-3"
+                style={{ backgroundColor: category.color }}
+              ></span>
+              <span className="font-medium">{category.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      {/* Back link */}
+      <div className="text-center">
+        <Link href="/dashboard" className="text-blue-600 hover:underline inline-flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to Dashboard
+        </Link>
+      </div>
+    </div>
   );
 }
-
-export default SafetyMapView;
