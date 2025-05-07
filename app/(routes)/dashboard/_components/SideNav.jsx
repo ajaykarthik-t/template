@@ -26,11 +26,18 @@ function SideNav({ isSideNavOpen, onClose }) {
       name: "Community ",
       icon: ReceiptText,
       path: "/dashboard/communityAlert", 
-    },    {
+    },    
+    {
       id: 3,
       name: "Zone Report ",
       icon: ReceiptText,
       path: "/dashboard/zoneReport", 
+    },
+    {
+      id: 4,
+      name: "AI Assistant ",
+      icon: ReceiptText,
+      path: "/dashboard/aiAssistant", 
     },
   ];
 

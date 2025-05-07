@@ -28,13 +28,13 @@ export default function Page() {
             </a>
 
             <h2 className="mt-6 text-2xl font-bold text-white sm:text-3xl md:text-4xl">
-              Welcome to LocationTracker
+              Welcome to Women Saftey App
             </h2>
 
-            <p className="mt-4 leading-relaxed text-white/90">
+            {/* <p className="mt-4 leading-relaxed text-white/90">
               Manage Your Expenses <br /> Control your Money <br />
               Start creating your budget and save ton of money
-            </p>
+            </p> */}
           </div>
         </section>
 
@@ -60,13 +60,13 @@ export default function Page() {
               </a>
 
               <h1 className="mt-2 text-2xl font-bold text-gray-900 sm:text-3xl md:text-4xl">
-                Welcome to LocationTracker
+                Welcome to Women Saftey App
               </h1>
 
-              <p className="mt-4 leading-relaxed text-gray-500">
+              {/* <p className="mt-4 leading-relaxed text-gray-500">
                 Manage Your Expenses <br /> Control your Money <br />
                 Start creating your budget and save ton of money
-              </p>
+              </p> */}
             </div>
 
             <SignIn />
