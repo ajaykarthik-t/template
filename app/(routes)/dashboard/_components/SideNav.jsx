@@ -39,7 +39,7 @@ function SideNav({ isSideNavOpen, onClose }) {
   return (
     <div className="h-screen p-5 border shadow-sm bg-white">
       <div className="flex justify-between items-center">
-        <Image src={"/cclogo.jpg"} alt="logo" width={160} height={100} />
+        <Image src={"/logo.jpg"} alt="logo" width={160} height={100} />
         <button className="md:hidden p-2" onClick={onClose}>
           <X />
         </button>

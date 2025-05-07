@@ -20,7 +20,7 @@ function Header() {
 
   return (
     <div className="p-5 flex justify-between items-center border shadow-sm">
-      <Image src={"/cclogo.jpg"} alt="logo" width={50} height={50} />
+      <Image src={"/logo.jpg"} alt="logo" width={50} height={50} />
       {isSignedIn ? (
         <UserButton />
       ) : (
