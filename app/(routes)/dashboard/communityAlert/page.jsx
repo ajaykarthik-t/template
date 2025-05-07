@@ -798,7 +798,7 @@ function CommunityAlert() {
             </button>
           </div>
           
-          {/* Location sharing with contacts */}
+          {/* Location sharing with contacts
           <div className="mt-2">
             <button
               type="button"
@@ -811,7 +811,7 @@ function CommunityAlert() {
               </svg>
               Share Location with Emergency Contacts
             </button>
-          </div>
+          </div> */}
           
           {/* Emergency Templates Dropdown - Keep it simple and functional */}
           <div className="mt-2">
