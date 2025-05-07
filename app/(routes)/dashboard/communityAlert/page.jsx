@@ -223,6 +223,30 @@ function CommunityAlert() {
   const handleAlertSubmit = () => {
     sendMessage("alert");
   };
+  
+  const handleEmergencyAlert = () => {
+    // Request location if possible
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          // With location
+          const emergencyMessage = `EMERGENCY ALERT! Location: https://maps.google.com/?q=${position.coords.latitude},${position.coords.longitude}`;
+          setNewMessage(emergencyMessage);
+          sendMessage("emergency");
+        },
+        (error) => {
+          // Without location
+          console.error("Error getting location:", error);
+          setNewMessage("EMERGENCY ALERT! I need help immediately!");
+          sendMessage("emergency");
+        }
+      );
+    } else {
+      // Fallback without geolocation
+      setNewMessage("EMERGENCY ALERT! I need help immediately!");
+      sendMessage("emergency");
+    }
+  };
 
   const formatTime = (timestamp) => {
     const date = new Date(timestamp);
@@ -253,7 +277,7 @@ function CommunityAlert() {
   return (
     <div className="p-6 md:p-10">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="font-bold text-2xl md:text-3xl">Community Chat</h2>
+        <h2 className="font-bold text-2xl md:text-3xl">Safety Chat</h2>
         <div className="flex items-center">
           <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm flex items-center mr-3">
             <span className="h-2 w-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
@@ -286,9 +310,9 @@ function CommunityAlert() {
               {/* Welcome message - always shown */}
               <div className="p-3 rounded-lg max-w-3xl bg-blue-100 text-blue-800 mx-auto text-center mb-6">
                 <div className="flex items-center justify-center mb-1">
-                  <strong className="text-sm">Community Chat</strong>
+                  <strong className="text-sm">Safety Chat</strong>
                 </div>
-                <p className="text-sm">Welcome to the community chat! Messages disappear after 24 hours.</p>
+                <p className="text-sm">Welcome to the safety chat! Use the Emergency Alert button for urgent assistance.</p>
               </div>
               
               {/* Dynamic messages */}
@@ -302,7 +326,9 @@ function CommunityAlert() {
                         ? 'bg-blue-100 text-blue-800 mx-auto text-center'
                         : message.type === 'alert'
                           ? 'bg-red-100 text-red-800'
-                          : 'bg-white border border-gray-200'
+                          : message.type === 'emergency'
+                            ? 'bg-red-500 text-white'
+                            : 'bg-white border border-gray-200'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
@@ -314,6 +340,11 @@ function CommunityAlert() {
                       {message.type === 'alert' && (
                         <span className="ml-2 bg-red-200 text-red-800 text-xs px-2 py-0.5 rounded-full">
                           Alert
+                        </span>
+                      )}
+                      {message.type === 'emergency' && (
+                        <span className="ml-2 bg-white text-red-800 text-xs px-2 py-0.5 rounded-full animate-pulse">
+                          EMERGENCY
                         </span>
                       )}
                     </div>
@@ -349,80 +380,56 @@ function CommunityAlert() {
             </button>
           </div>
           
-          {/* Alert button */}
+          {/* Alert buttons */}
           <div className="mt-2 flex justify-between items-center">
             <span className="text-xs text-gray-500">
               Messages will disappear after 24 hours
             </span>
-            <button
-              type="button"
-              onClick={handleAlertSubmit}
-              className="bg-red-600 hover:bg-red-700 text-white py-1.5 px-3 text-sm rounded-lg"
-              disabled={loading || !newMessage.trim() || !user}
-            >
-              Send as Alert
-            </button>
+            <div className="flex space-x-2">
+              <button
+                type="button"
+                onClick={handleAlertSubmit}
+                className="bg-red-600 hover:bg-red-700 text-white py-1.5 px-3 text-sm rounded-lg"
+                disabled={loading || !newMessage.trim() || !user}
+              >
+                Send as Alert
+              </button>
+              <button
+                type="button"
+                onClick={handleEmergencyAlert}
+                className="bg-red-800 hover:bg-red-900 text-white py-1.5 px-3 text-sm rounded-lg"
+                disabled={loading || !user}
+              >
+                Emergency Alert
+              </button>
+            </div>
           </div>
         </form>
       </div>
       
-      {/* Community guidelines */}
+      {/* Safety guidelines */}
       <div className="bg-yellow-50 p-4 rounded-lg mb-6">
-        <h3 className="font-semibold text-lg mb-2">Community Chat Guidelines</h3>
+        <h3 className="font-semibold text-lg mb-2">Safety Chat Guidelines</h3>
         <ul className="text-sm text-gray-700 space-y-2">
           <li className="flex items-start">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-yellow-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            Use the 'Alert' option for urgent safety concerns or incidents
+            Use the 'Alert' option for safety concerns or incidents
           </li>
           <li className="flex items-start">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-yellow-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            All messages are temporary and will disappear after 24 hours
+            Use 'Emergency Alert' for immediate assistance needs
           </li>
           <li className="flex items-start">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-yellow-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            Be respectful and supportive of community members
+            Share your location for emergency alerts when possible
           </li>
         </ul>
-      </div>
-      
-      {/* Emergency contacts section */}
-      <div className="bg-white rounded-lg shadow-lg p-4">
-        <h3 className="font-semibold text-lg mb-3">Emergency Contacts</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="border border-gray-200 rounded-lg p-3">
-            <h4 className="font-medium mb-1">Police</h4>
-            <a href="tel:100" className="text-blue-600 flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-              100
-            </a>
-          </div>
-          <div className="border border-gray-200 rounded-lg p-3">
-            <h4 className="font-medium mb-1">Women's Helpline</h4>
-            <a href="tel:1091" className="text-blue-600 flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-              1091
-            </a>
-          </div>
-          <div className="border border-gray-200 rounded-lg p-3">
-            <h4 className="font-medium mb-1">Ambulance</h4>
-            <a href="tel:108" className="text-blue-600 flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-              108
-            </a>
-          </div>
-        </div>
       </div>
     </div>
   );
