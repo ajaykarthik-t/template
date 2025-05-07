@@ -8,7 +8,6 @@ if (!admin.apps.length) {
   const serviceAccount = {
     projectId: "women-saftey-10c68",
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    // privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n') || '',
   };
 
   admin.initializeApp({
