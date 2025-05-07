@@ -15,7 +15,6 @@ import Script from 'next/script';
 function SafetyMapView() {
   const { user } = useUser();
   const [loading, setLoading] = useState(true);
-  const [mapLoaded, setMapLoaded] = useState(false);
   const [firebaseConnected, setFirebaseConnected] = useState(false);
   const [reportedZones, setReportedZones] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('unsafe');
@@ -121,21 +120,10 @@ function SafetyMapView() {
     }
   }, [firebaseConnected]);
   
-  // Handle Google Maps API load
-  const handleGoogleMapsLoad = () => {
-    console.log("Google Maps API loaded");
-    setMapLoaded(true);
-  };
-  
-  // Initialize Google Maps after API is loaded
-  useEffect(() => {
-    if (!mapLoaded || !mapRef.current || googleMapRef.current) return;
-    
-    initializeMap();
-  }, [mapLoaded]);
-  
   // Initialize Google Maps
   const initializeMap = () => {
+    if (!mapRef.current || googleMapRef.current) return;
+
     // Try to get user's location first
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -158,11 +146,6 @@ function SafetyMapView() {
   // Create the Google Map
   const createMap = (center) => {
     try {
-      if (!window.google || !window.google.maps) {
-        console.error("Google Maps API not loaded");
-        return;
-      }
-      
       // Create the map
       const googleMap = new window.google.maps.Map(mapRef.current, {
         center,
@@ -525,8 +508,8 @@ function SafetyMapView() {
     <>
       {/* Load Google Maps API */}
       <Script
-        src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=drawing,places"
-        onLoad={handleGoogleMapsLoad}
+        src={`https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=drawing,places`}
+        onLoad={initializeMap}
         strategy="afterInteractive"
       />
       

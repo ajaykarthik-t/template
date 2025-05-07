@@ -798,20 +798,6 @@ function CommunityAlert() {
             </button>
           </div>
           
-          {/* Location sharing with contacts
-          <div className="mt-2">
-            <button
-              type="button"
-              onClick={shareLocationWithContacts}
-              className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded text-sm flex items-center justify-center"
-              disabled={!user || emergencyContacts.length === 0}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-              Share Location with Emergency Contacts
-            </button>
-          </div> */}
           
           {/* Emergency Templates Dropdown - Keep it simple and functional */}
           <div className="mt-2">
