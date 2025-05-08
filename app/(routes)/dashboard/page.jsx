@@ -11,6 +11,7 @@ import {
   getDocs,
   getFirestore
 } from 'firebase/firestore';
+
 import { initializeApp } from 'firebase/app';
 
 // Initialize Firebase directly in the component to ensure it's properly configured
