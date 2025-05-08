@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { 
@@ -8,9 +9,11 @@ import {
   updateDoc,
   deleteDoc,
   query, 
-  getDocs,
-  getFirestore
+  getDocs
 } from 'firebase/firestore';
+
+// Import Firebase from your centralized utility file
+import { db, app, realDb, auth } from '../../../lib/firebase';
 
 import { initializeApp } from 'firebase/app';
 
