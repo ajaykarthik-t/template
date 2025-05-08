@@ -15,23 +15,6 @@ import {
 // Import Firebase from your centralized utility file
 import { db, app, realDb, auth } from '../../../lib/firebase';
 
-import { initializeApp } from 'firebase/app';
-
-// Initialize Firebase directly in the component to ensure it's properly configured
-// Replace these with your actual Firebase config values
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: "women-saftey-10c68", // Using the projectId from your error message
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
-};
-
-// Initialize Firebase app and Firestore
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
 function Dashboard() {
   const { user, isLoaded: userLoaded } = useUser(); // Using the user context with loading state
   const [location, setLocation] = useState(null);

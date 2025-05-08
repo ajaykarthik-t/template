@@ -2,11 +2,7 @@
 const nextConfig = {
     reactStrictMode: true,
     swcMinify: true,
-    experimental: {
-      // This is important to prevent static optimization of pages that use Firebase
-      appDir: true,
-    },
-    // Specify that dashboard should not be statically optimized
+    // Set output to standalone to ensure proper bundling
     output: 'standalone',
   };
   
